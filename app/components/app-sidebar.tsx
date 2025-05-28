@@ -6,7 +6,6 @@ import {
   Command,
   GalleryVerticalEnd,
   Inbox,
-  Pen,
   Send,
   Settings2,
   SquarePen,
@@ -22,18 +21,16 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
   SidebarHeader,
   SidebarRail,
 } from "~/components/ui/sidebar";
-import { Button } from "./ui/button";
 
 // This is sample data.
 const data = {
   user: {
     name: "shadcn",
     email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "https://github.com/shadcn.png",
   },
   teams: [
     {
@@ -142,22 +139,22 @@ const data = {
   projects: [
     {
       name: "Inbox",
-      url: "#",
+      url: "/mail/inbox",
       icon: Inbox,
     },
     {
       name: "Drafts",
-      url: "#",
+      url: "/mail/drafts",
       icon: SquarePen,
     },
     {
       name: "Sent",
-      url: "#",
+      url: "/mail/sent",
       icon: Send,
     },
     {
       name: "Trash",
-      url: "#",
+      url: "/mail/trash",
       icon: Trash2,
     },
   ],
@@ -171,12 +168,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavProjects projects={data.projects} />
-        {/* <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <Button variant="default" size="sm" className="rounded-full">
-            <Pen />
-            Compose
-          </Button>
-        </SidebarGroup> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
