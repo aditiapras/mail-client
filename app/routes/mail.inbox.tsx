@@ -1,9 +1,11 @@
 import type { MetaFunction } from "@remix-run/node";
 import { Link, Outlet } from "@remix-run/react";
-import { Pen, Search } from "lucide-react";
+import { Paperclip, Pen, Search, Star } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { useInbox } from "~/lib/useInbox";
+import moment from "moment-timezone";
 
 export const meta: MetaFunction = () => {
   return [
@@ -13,6 +15,7 @@ export const meta: MetaFunction = () => {
 };
 
 export default function Page() {
+  const { data, isLoading, error } = useInbox("/api/inbox");
   return (
     <div className="flex flex-1 flex-col gap-4 px-4">
       <div className="grid grid-cols-8">
@@ -31,25 +34,72 @@ export default function Page() {
             />
             <Search className="absolute left-2 size-4 text-muted-foreground top-1/2 -translate-y-1/2" />
           </div>
-          <ScrollArea className="">
-            <Link
-              to="/mail/inbox/1"
-              className="hover:bg-neutral-100 p-2 flex flex-col gap-2 border-b"
-            >
-              <div className="flex justify-between items-center">
-                <p>Name</p>
-                <p className="text-xs text-muted-foreground">Time</p>
-              </div>
-              <p className="text-sm">Subject</p>
-              <p className="text-xs text-muted-foreground line-clamp-3">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Cum sed
-                alias autem! Eum amet, saepe maiores at aliquam rerum reiciendis
-                asperiores ipsam eveniet velit corrupti distinctio culpa
-                consequatur ab, quia odit modi blanditiis? Cumque unde, natus
-                officiis accusamus, facilis eos harum libero obcaecati vel et,
-                cupiditate alias sed a saepe.
+          {isLoading && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-center text-sm text-muted-foreground">
+                Loading...
               </p>
-            </Link>
+            </div>
+          )}
+          {error && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-center text-sm text-red-500">
+                Error: {error.message}
+              </p>
+            </div>
+          )}
+          <ScrollArea className="">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {data?.map?.((email: any) => (
+              <Link
+                key={email.uid}
+                to={`/mail/inbox/${email.uid}`}
+                className="hover:bg-neutral-100 p-2 flex flex-col gap-2 border-b"
+              >
+                <div className="flex justify-between items-center">
+                  {email.attachments?.length > 0 ? (
+                    <div className="flex items-center gap-2">
+                      <Paperclip className="size-3 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">
+                        {email.from?.[0]?.name || "Unknown Sender"}
+                      </p>
+                      {email.status?.flagged && (
+                        <Star className="size-3 text-yellow-500 fill-yellow-500" />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        {email.from?.[0]?.name || "Unknown Sender"}
+                      </p>
+                      {email.status?.flagged && (
+                        <Star className="size-3 text-yellow-500 fill-yellow-500" />
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {moment(email.date).fromNow()}
+                  </p>
+                </div>
+                <p
+                  className={`text-sm font-semibold line-clamp-1 ${
+                    email.status?.seen ? "text-neutral-700" : "text-blue-500"
+                  }`}
+                >
+                  {email.subject}
+                </p>
+                <p className="text-xs text-muted-foreground line-clamp-3">
+                  {email.text || "No content"}
+                </p>
+              </Link>
+            ))}
+            {data?.length === 0 && (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-center text-sm text-muted-foreground p-4">
+                  No emails found
+                </p>
+              </div>
+            )}
           </ScrollArea>
         </div>
         <Outlet />

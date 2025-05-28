@@ -1,6 +1,7 @@
 import { json } from "@remix-run/node";
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
+import type { LoaderFunctionArgs } from "@remix-run/node";
 
 const streamToBuffer = async (
   stream: NodeJS.ReadableStream
@@ -10,7 +11,13 @@ const streamToBuffer = async (
   return Buffer.concat(chunks);
 };
 
-export async function loader() {
+export async function loader({ params }: LoaderFunctionArgs) {
+  const uid = params.uid;
+
+  if (!uid) {
+    return json({ error: "Email UID is required" }, { status: 400 });
+  }
+
   const client = new ImapFlow({
     host: process.env.STARWALT_HOST!,
     port: 993,
@@ -22,16 +29,22 @@ export async function loader() {
     logger: false,
   });
 
-  await client.connect();
-  await client.mailboxOpen("INBOX");
+  try {
+    await client.connect();
+    await client.mailboxOpen("INBOX");
 
-  const emails = [];
+    // Fetch the specific email by UID
+    const message = await client.fetchOne(uid, {
+      envelope: true,
+      source: true,
+      flags: true,
+    });
 
-  for await (const message of client.fetch("1:*", {
-    envelope: true,
-    source: true,
-    flags: true,
-  })) {
+    if (!message) {
+      await client.logout();
+      return json({ error: "Email not found" }, { status: 404 });
+    }
+
     const sourceBuffer =
       message.source instanceof Buffer
         ? message.source
@@ -41,11 +54,12 @@ export async function loader() {
 
     const parsed = await simpleParser(sourceBuffer);
 
-    emails.push({
+    const email = {
       uid: message.uid,
       subject: parsed.subject || "(No subject)",
       from: parsed.from?.value || "",
       to: parsed.to?.value || "",
+      cc: parsed.cc?.value || "",
       date: parsed.date || new Date(),
       text: parsed.text || "",
       html: parsed.html || "",
@@ -65,17 +79,13 @@ export async function loader() {
           size: att.size,
           content: att.content.toString("base64"),
         })) || [],
-    });
+    };
+
+    await client.logout();
+    return json(email);
+  } catch (error) {
+    await client.logout();
+    console.error("Error fetching email:", error);
+    return json({ error: "Failed to fetch email" }, { status: 500 });
   }
-
-  await client.logout();
-
-  // Sort emails by date in descending order (latest first)
-  emails.sort((a, b) => {
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
-    return dateB - dateA;
-  });
-
-  return json(emails);
 }
